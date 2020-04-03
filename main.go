@@ -37,7 +37,7 @@ func main() {
     cacheFilePath := getCacheFilePath()
 
     thread := flag.Int("t", 1, "Number of threads")
-    input := flag.String("i", "-", "Input [FileName|Stdin|IP|CIDR]")
+    input := flag.String("i", "-", "Input [FileName|Stdin]")
     out := flag.String("o", "filtered.txt", "Output file name")
     skipCache := flag.Bool("s", false, "Skip loading cache file for CDN IP ranges")
     flag.Parse()
@@ -153,33 +153,31 @@ func getCacheFilePath() string {
 
 func loadInput(param string) []string {
     s.Suffix = " Loading input..."
-
+    var ips []string
+    var sc *bufio.Scanner
     if param == "-" {
-        var lines []string
-        sc := bufio.NewScanner(os.Stdin)
-        for sc.Scan() {
-            line := strings.TrimSpace(sc.Text())
-            if line == "" {
-                continue
-            }
-            lines = append(lines, line)
+        sc = bufio.NewScanner(os.Stdin)
+    } else {
+        f, err := os.Open(param)
+        if err != nil {
+            fatal(err)
         }
-        return lines
+        defer f.Close()
+        sc = bufio.NewScanner(f)
     }
 
-    ip := net.ParseIP(param)
-    if ip != nil {
-        return []string{ip.String()}
+    for sc.Scan() {
+        line := strings.TrimSpace(sc.Text())
+        if line == "" {
+            continue
+        }
+        if ip := net.ParseIP(line); ip != nil {
+            ips = append(ips, ip.String())
+        } else if cidr, err := cdn.ExpandCIDR(line); err == nil {
+            ips = append(ips, cidr...)
+        }
     }
-
-    ips, err := cdn.ExpandCIDR(param)
-    if err == nil {
-        return ips
-    }
-
-    file, err := ioutil.ReadFile(param)
-    fatal(err)
-    return strings.Split(string(file), "\n")
+    return ips
 }
 
 func fatal(err error) {

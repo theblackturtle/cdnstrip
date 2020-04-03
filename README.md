@@ -17,20 +17,19 @@ Go module for striping CDN IP ranges.
 
 ## Install
 ```
-go get github.com/mazlum/cdnstrip
+go get -u github.com/theblackturtle/cdnstrip
 ```
 
 ## Usage Parameters
 ```
+Usage of cdnstrip:
   -i string
-    	Input [FileName|IP|CIDR]
+        Input [FileName|Stdin] (default "-")
   -o string
-    	Output file name (default "filtered.txt")
-  -skip-cache
-    	Skip loading cache file for CDN IP ranges
+        Output file name (default "filtered.txt")
+  -s    Skip loading cache file for CDN IP ranges
   -t int
-    	Number of threads (default 1)
-
+        Number of threads (default 1)
 ```
 
 ## Example Code
