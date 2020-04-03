@@ -91,18 +91,14 @@ func main() {
     fatal(err)
     defer outFile.Close()
 
-    list := loadInput(*input)
-    channel := make(chan string, len(list))
-    for _, ip := range list {
-        channel <- ip
-    }
-    close(channel)
-
+    channel := make(chan string, *thread*2)
     for i := 0; i < *thread; i++ {
         wg.Add(1)
         go strip(channel, outFile)
     }
 
+    loadInput(*input, channel)
+    close(channel)
     wg.Wait()
 
     s.Stop()
@@ -117,7 +113,6 @@ func strip(channel chan string, file *os.File) {
             if cdn.Check(cdnRanges, i) {
                 mutex.Lock()
                 cdnIP++
-                //file.WriteString(fmt.Sprintf("[CDN] %s\n", i.String()))
                 mutex.Unlock()
             } else {
                 mutex.Lock()
@@ -151,9 +146,8 @@ func getCacheFilePath() string {
     return usr.HomeDir + "/.config/cdnstrip.cache"
 }
 
-func loadInput(param string) []string {
+func loadInput(param string, inputChan chan<- string) {
     s.Suffix = " Loading input..."
-    var ips []string
     var sc *bufio.Scanner
     if param == "-" {
         sc = bufio.NewScanner(os.Stdin)
@@ -172,12 +166,13 @@ func loadInput(param string) []string {
             continue
         }
         if ip := net.ParseIP(line); ip != nil {
-            ips = append(ips, ip.String())
+            inputChan <- ip.String()
         } else if cidr, err := cdn.ExpandCIDR(line); err == nil {
-            ips = append(ips, cidr...)
+            for _, ip := range cidr {
+                inputChan <- ip
+            }
         }
     }
-    return ips
 }
 
 func fatal(err error) {
