@@ -1,8 +1,10 @@
 package main
 
 import (
+    "bufio"
     "errors"
     "flag"
+    "fmt"
     "io/ioutil"
     "log"
     "net"
@@ -33,13 +35,12 @@ var cdnIP int
 var s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
 func main() {
-
     cacheFilePath := getCacheFilePath()
 
     thread := flag.Int("t", 1, "Number of threads")
-    input := flag.String("i", "", "Input [FileName|IP|CIDR]")
+    input := flag.String("i", "-", "Input [FileName|Stdin|IP|CIDR]")
     out := flag.String("o", "filtered.txt", "Output file name")
-    skipCache := flag.Bool("skip-cache", false, "Skip loading cache file for CDN IP ranges")
+    skipCache := flag.Bool("s", false, "Skip loading cache file for CDN IP ranges")
     flag.Parse()
 
     if *input == "" {
@@ -92,15 +93,17 @@ func main() {
     defer outFile.Close()
 
     list := loadInput(*input)
-    channel := make(chan string, len(list))
-    for _, ip := range list {
-        channel <- ip
-    }
-    close(channel)
+    channel := make(chan string, *thread)
+
     for i := 0; i < *thread; i++ {
         wg.Add(1)
         go strip(channel, outFile)
     }
+
+    for _, ip := range list {
+        channel <- ip
+    }
+    close(channel)
     wg.Wait()
 
     s.Stop()
@@ -115,6 +118,7 @@ func strip(channel chan string, file *os.File) {
             if cdn.Check(cdnRanges, i) {
                 mutex.Lock()
                 cdnIP++
+                file.WriteString(fmt.Sprintf("[CDN] %s\n", i.String()))
                 mutex.Unlock()
             } else {
                 mutex.Lock()
@@ -150,6 +154,19 @@ func getCacheFilePath() string {
 
 func loadInput(param string) []string {
     s.Suffix = " Loading input..."
+
+    if param == "-" {
+        var lines []string
+        sc := bufio.NewScanner(os.Stdin)
+        for sc.Scan() {
+            line := strings.TrimSpace(sc.Text())
+            if line == "" {
+                continue
+            }
+            lines = append(lines, line)
+        }
+        return lines
+    }
 
     ip := net.ParseIP(param)
     if ip != nil {

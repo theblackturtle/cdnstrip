@@ -1,6 +1,8 @@
 package cdn
 
-import "net"
+import (
+    "net"
+)
 
 // Check returns true if the CIDR ranges contains the given IP
 func Check(cidrs []*net.IPNet, ip net.IP) bool {
