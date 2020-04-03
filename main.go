@@ -4,7 +4,6 @@ import (
     "bufio"
     "errors"
     "flag"
-    "fmt"
     "io/ioutil"
     "log"
     "net"
@@ -77,7 +76,7 @@ func main() {
         cdnRanges = ranges
 
         s.Suffix = " Creating new cache file..."
-        cahceFile, err := os.OpenFile(cacheFilePath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0664)
+        cahceFile, err := os.OpenFile(cacheFilePath, os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0664)
         fatal(err)
         for i, r := range cdnRanges {
             cahceFile.WriteString(r.String())
@@ -93,17 +92,17 @@ func main() {
     defer outFile.Close()
 
     list := loadInput(*input)
-    channel := make(chan string, *thread)
+    channel := make(chan string, len(list))
+    for _, ip := range list {
+        channel <- ip
+    }
+    close(channel)
 
     for i := 0; i < *thread; i++ {
         wg.Add(1)
         go strip(channel, outFile)
     }
 
-    for _, ip := range list {
-        channel <- ip
-    }
-    close(channel)
     wg.Wait()
 
     s.Stop()
@@ -118,7 +117,7 @@ func strip(channel chan string, file *os.File) {
             if cdn.Check(cdnRanges, i) {
                 mutex.Lock()
                 cdnIP++
-                file.WriteString(fmt.Sprintf("[CDN] %s\n", i.String()))
+                //file.WriteString(fmt.Sprintf("[CDN] %s\n", i.String()))
                 mutex.Unlock()
             } else {
                 mutex.Lock()
