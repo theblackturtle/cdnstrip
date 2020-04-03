@@ -40,6 +40,7 @@ func main() {
     input := flag.String("i", "-", "Input [FileName|Stdin]")
     out := flag.String("o", "filtered.txt", "Output file name")
     skipCache := flag.Bool("s", false, "Skip loading cache file for CDN IP ranges")
+    getIPv6 := flag.Bool("k", false, "Also check IPv6")
     flag.Parse()
 
     if *input == "" {
@@ -97,7 +98,7 @@ func main() {
         go strip(channel, outFile)
     }
 
-    loadInput(*input, channel)
+    loadInput(*input, *getIPv6, channel)
     close(channel)
     wg.Wait()
 
@@ -146,7 +147,7 @@ func getCacheFilePath() string {
     return usr.HomeDir + "/.config/cdnstrip.cache"
 }
 
-func loadInput(param string, inputChan chan<- string) {
+func loadInput(param string, getIPv6 bool, inputChan chan<- string) {
     s.Suffix = " Loading input..."
     var sc *bufio.Scanner
     if param == "-" {
@@ -164,6 +165,11 @@ func loadInput(param string, inputChan chan<- string) {
         line := strings.TrimSpace(sc.Text())
         if line == "" {
             continue
+        }
+        if !getIPv6 {
+            if strings.Contains(line, ":") {
+                continue
+            }
         }
         if ip := net.ParseIP(line); ip != nil {
             inputChan <- ip.String()
