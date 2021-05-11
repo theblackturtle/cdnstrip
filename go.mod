@@ -1,8 +1,5 @@
-module github.com/mazlum/cdnstrip
+module github.com/theblackturtle/cdnstrip
 
-go 1.13
+go 1.16
 
-require (
-	github.com/briandowns/spinner v1.8.0
-	github.com/fatih/color v1.9.0 // indirect
-)
+require github.com/briandowns/spinner v1.12.0 // indirect
